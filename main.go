@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"gody-cdn/configs"
@@ -22,5 +23,14 @@ func main() {
 		logrus.Fatal(errors.FullTrace(err))
 	}
 	ds := store.NewDiskStore(configs.Configuration.DiskCache.Path, 2)
+	localDB := configs.Configuration.LocalDB
+	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
+	dbs := store.NewDBBackedStore(ds, localDsn)
+	object, trace, err := dbs.Get("test")
+	if err != nil {
+		logrus.Fatalln(errors.FullTrace(err))
+	}
+	logrus.Infoln(trace.String())
+	logrus.Infof("Object nil: %t", object == nil)
 	ds.Shutdown()
 }

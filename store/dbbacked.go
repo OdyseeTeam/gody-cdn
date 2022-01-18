@@ -6,6 +6,7 @@ import (
 
 	"github.com/lbryio/reflector.go/shared"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	qt "github.com/lbryio/lbry.go/v2/extras/query"
 	log "github.com/sirupsen/logrus"
@@ -20,10 +21,28 @@ type DBBackedStore struct {
 }
 
 // NewDBBackedStore returns an initialized store pointer.
-func NewDBBackedStore(blobs ObjectStore, conn *sql.DB) *DBBackedStore {
-	dbbs := DBBackedStore{objectsStore: blobs, conn: conn, ticker: time.NewTicker(5 * time.Minute), done: make(chan bool)}
+func NewDBBackedStore(objectStore ObjectStore, dsn string) *DBBackedStore {
+	conn, err := connect(dsn)
+	if err != nil {
+		log.Fatalln(errors.FullTrace(err))
+	}
+	dbbs := DBBackedStore{objectsStore: objectStore, conn: conn, ticker: time.NewTicker(5 * time.Minute), done: make(chan bool)}
 	go dbbs.selfCleanup()
 	return &dbbs
+}
+
+// Connect will create a connection to the database
+func connect(dsn string) (*sql.DB, error) {
+	var err error
+	dsn += "?parseTime=1&collation=utf8mb4_unicode_ci"
+	conn, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, errors.Err(err)
+	}
+
+	conn.SetMaxIdleConns(12)
+
+	return conn, errors.Err(conn.Ping())
 }
 
 const nameDBBacked = "db-backed"
