@@ -50,13 +50,13 @@ const nameDBBacked = "db-backed"
 // Name is the cache type name
 func (d *DBBackedStore) Name() string { return nameDBBacked }
 
-// Has returns true if the blob is in the store
+// Has returns true if the object is in the store
 func (d *DBBackedStore) Has(hash string) (bool, error) {
 	stored, _, err := d.has(hash)
 	return stored, err
 }
 
-// has returns true if the blob is in the store
+// has returns true if the object is in the store
 func (d *DBBackedStore) has(hash string) (bool, *time.Time, error) {
 	if d.conn == nil {
 		return false, nil, errors.Err("not connected")
@@ -116,7 +116,7 @@ func (d *DBBackedStore) touch(hash string) error {
 	return errors.Err(err)
 }
 
-// Put stores the blob in the S3 store and stores the blob information in the DB.
+// Put stores the object in the S3 store and stores the object information in the DB.
 func (d *DBBackedStore) Put(hash string, object []byte) error {
 	if d.conn == nil {
 		return errors.Err("not connected")

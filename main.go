@@ -26,6 +26,10 @@ func main() {
 	localDB := configs.Configuration.LocalDB
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := store.NewDBBackedStore(ds, localDsn)
+	err = dbs.Put("test", []byte("test2"))
+	if err != nil {
+		logrus.Fatalln(errors.FullTrace(err))
+	}
 	object, trace, err := dbs.Get("test")
 	if err != nil {
 		logrus.Fatalln(errors.FullTrace(err))

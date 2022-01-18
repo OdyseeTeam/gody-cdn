@@ -11,6 +11,7 @@ require (
 	github.com/lbryio/reflector.go v1.1.3-0.20211214213601-4d8e7739d704
 	github.com/sirupsen/logrus v1.8.1
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
 require (

@@ -6,17 +6,17 @@ import (
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 )
 
-// ObjectStore is an interface for handling blob storage.
+// ObjectStore is an interface for handling object storage.
 type ObjectStore interface {
-	// Name of blob store (useful for metrics)
+	// Name of object store (useful for metrics)
 	Name() string
-	// Has Does blob exist in the store.
+	// Has Does object exist in the store.
 	Has(hash string) (bool, error)
-	// Get the blob from the store. Must return ErrObjectNotFound if blob is not in store.
+	// Get the object from the store. Must return ErrObjectNotFound if object is not in store.
 	Get(hash string) ([]byte, shared.BlobTrace, error)
-	// Put the blob into the store.
+	// Put the object into the store.
 	Put(hash string, object []byte) error
-	// Delete the blob from the store.
+	// Delete the object from the store.
 	Delete(hash string) error
 	// Shutdown the store gracefully
 	Shutdown()
