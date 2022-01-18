@@ -1,0 +1,21 @@
+{
+  "local_db": {
+    "host": "localhost",
+    "user": "godycdn",
+    "database": "godycdn",
+    "password": "godycdn"
+  },
+  "disk_cache": {
+    "path": "/home/odysee/objects/",
+    "size": "200GB"
+  },
+  "s3_origins": [
+    {
+      "id": "",
+      "secret": "",
+      "region": "us-east-1",
+      "bucket": "transcoded.odycdn.com",
+      "endpoint": "s3.amazonaws.com"
+    }
+  ]
+}

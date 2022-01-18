@@ -21,7 +21,9 @@ type DBBackedStore struct {
 
 // NewDBBackedStore returns an initialized store pointer.
 func NewDBBackedStore(blobs ObjectStore, conn *sql.DB) *DBBackedStore {
-	return &DBBackedStore{objectsStore: blobs, conn: conn, ticker: time.NewTicker(5 * time.Minute), done: make(chan bool)}
+	dbbs := DBBackedStore{objectsStore: blobs, conn: conn, ticker: time.NewTicker(5 * time.Minute), done: make(chan bool)}
+	go dbbs.selfCleanup()
+	return &dbbs
 }
 
 const nameDBBacked = "db-backed"
@@ -146,5 +148,65 @@ func (d *DBBackedStore) selfCleanup() {
 			log.Infof("Finished self cleanup. It took %s", time.Since(t).String())
 		}
 	}
+}
 
+// LeastRecentlyAccessedObjects retrieves as many objects from the database as needed to match totalSize in occupied bytes
+func (d *DBBackedStore) LeastRecentlyAccessedObjects(totalSize int) ([]string, error) {
+	if d.conn == nil {
+		return nil, errors.Err("not connected")
+	}
+	retrievedSize := 0
+	hashes := make([]string, 0, 1000)
+	for i := 0; retrievedSize < totalSize; i++ {
+		objects, err := d.leastRecentlyAccessedObjects(i)
+		if err != nil {
+			return nil, err
+		}
+		if len(objects) == 0 {
+			return hashes, nil
+		}
+		for _, o := range objects {
+			retrievedSize += o.size
+			hashes = append(hashes, o.hash)
+			if retrievedSize >= totalSize {
+				return hashes, nil
+			}
+		}
+	}
+	return hashes, nil
+}
+
+type dbObject struct {
+	hash string
+	size int
+}
+
+//leastRecentlyAccessedObjects retrieves objects in chunks at a time starting from lastOffset
+func (d *DBBackedStore) leastRecentlyAccessedObjects(lastOffset int) ([]dbObject, error) {
+	limit := 1000
+	query := "SELECT hash, length from object where is_stored = 1 order by last_accessed_at limit ? offset ?"
+
+	rows, err := d.conn.Query(query, limit, lastOffset*limit)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, errors.Err(err)
+	}
+	defer rows.Close()
+
+	objects := make([]dbObject, 0, limit)
+	for rows.Next() {
+		var hash string
+		var size int
+		err := rows.Scan(&hash, &size)
+		if err != nil {
+			return nil, errors.Err(err)
+		}
+		objects = append(objects, dbObject{
+			hash: hash,
+			size: size,
+		})
+	}
+	return objects, nil
 }
