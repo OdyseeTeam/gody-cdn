@@ -2,15 +2,12 @@ package store
 
 import (
 	"database/sql"
-	"encoding/json"
 	"time"
 
-	"github.com/lbryio/reflector.go/db"
 	"github.com/lbryio/reflector.go/shared"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbry.go/v2/stream"
-
+	qt "github.com/lbryio/lbry.go/v2/extras/query"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,11 +15,13 @@ import (
 type DBBackedStore struct {
 	objectsStore ObjectStore
 	conn         *sql.DB
+	ticker       *time.Ticker
+	done         chan bool
 }
 
 // NewDBBackedStore returns an initialized store pointer.
 func NewDBBackedStore(blobs ObjectStore, conn *sql.DB) *DBBackedStore {
-	return &DBBackedStore{objectsStore: blobs, conn: conn}
+	return &DBBackedStore{objectsStore: blobs, conn: conn, ticker: time.NewTicker(5 * time.Minute), done: make(chan bool)}
 }
 
 const nameDBBacked = "db-backed"
@@ -89,148 +88,63 @@ func (d *DBBackedStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
 
 func (d *DBBackedStore) touch(hash string) error {
 	if d.conn == nil {
-		return false, nil, errors.Err("not connected")
+		return errors.Err("not connected")
 	}
-	query := `SELECT hash, length, is_stored, last_accessed_at FROM object WHERE hash = ?`
-	row := d.conn.QueryRow(query, hash)
+	query := `UPDATE object set last_accessed_at = ? WHERE hash = ?`
+	_, err := d.conn.Exec(query, time.Now(), hash)
+	return errors.Err(err)
 }
 
 // Put stores the blob in the S3 store and stores the blob information in the DB.
-func (d *DBBackedStore) Put(hash string, blob stream.Blob) error {
-	err := d.blobs.Put(hash, blob)
+func (d *DBBackedStore) Put(hash string, object []byte) error {
+	if d.conn == nil {
+		return errors.Err("not connected")
+	}
+	err := d.objectsStore.Put(hash, object)
 	if err != nil {
 		return err
 	}
-
-	return d.db.AddBlob(hash, len(blob), true)
-}
-
-// PutSD stores the SDBlob in the S3 store. It will return an error if the sd blob is missing the stream hash or if
-// there is an error storing the blob information in the DB.
-func (d *DBBackedStore) PutSD(hash string, blob stream.Blob) error {
-	var blobContents db.SdBlob
-	err := json.Unmarshal(blob, &blobContents)
-	if err != nil {
-		return errors.Err(err)
-	}
-	if blobContents.StreamHash == "" {
-		return errors.Err("sd blob is missing stream hash")
-	}
-
-	err = d.blobs.PutSD(hash, blob)
-	if err != nil {
-		return err
-	}
-
-	return d.db.AddSDBlob(hash, len(blob), blobContents)
+	args := []interface{}{hash, true, len(object), time.Now()}
+	query := `INSERT INTO object (hash,is_stored,length,last_accessed_at) VALUES(` + qt.Qs(len(args)) + `) ON DUPLICATE KEY UPDATE is_stored = (is_stored or VALUES(is_stored)), last_accessed_at = VALUES(last_accessed_at)`
+	_, err = d.conn.Exec(query, args...)
+	return errors.Err(err)
 }
 
 func (d *DBBackedStore) Delete(hash string) error {
-	err := d.blobs.Delete(hash)
+	if d.conn == nil {
+		return errors.Err("not connected")
+	}
+	err := d.objectsStore.Delete(hash)
 	if err != nil {
 		return err
 	}
-
-	return d.db.Delete(hash)
-}
-
-// Block deletes the blob and prevents it from being uploaded in the future
-func (d *DBBackedStore) Block(hash string) error {
-	if blocked, err := d.isBlocked(hash); blocked || err != nil {
-		return err
-	}
-
-	log.Debugf("blocking %s", hash)
-
-	err := d.db.Block(hash)
-	if err != nil {
-		return err
-	}
-
-	//has, err := d.db.HasBlob(hash, false)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//if has {
-	//	err = d.blobs.Delete(hash)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	err = d.db.Delete(hash)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
-
-	return d.markBlocked(hash)
-}
-
-// Wants returns false if the hash exists or is blocked, true otherwise
-func (d *DBBackedStore) Wants(hash string) (bool, error) {
-	blocked, err := d.isBlocked(hash)
-	if blocked || err != nil {
-		return false, err
-	}
-
-	has, err := d.Has(hash)
-	return !has, err
-}
-
-// MissingBlobsForKnownStream returns missing blobs for an existing stream
-// WARNING: if the stream does NOT exist, no blob hashes will be returned, which looks
-// like no blobs are missing
-func (d *DBBackedStore) MissingBlobsForKnownStream(sdHash string) ([]string, error) {
-	return d.db.MissingBlobsForKnownStream(sdHash)
-}
-
-func (d *DBBackedStore) markBlocked(hash string) error {
-	err := d.initBlocked()
-	if err != nil {
-		return err
-	}
-
-	d.blockedMu.Lock()
-	defer d.blockedMu.Unlock()
-
-	d.blocked[hash] = true
-	return nil
-}
-
-func (d *DBBackedStore) isBlocked(hash string) (bool, error) {
-	err := d.initBlocked()
-	if err != nil {
-		return false, err
-	}
-
-	d.blockedMu.RLock()
-	defer d.blockedMu.RUnlock()
-
-	return d.blocked[hash], nil
-}
-
-func (d *DBBackedStore) initBlocked() error {
-	// first check without blocking since this is the most likely scenario
-	if d.blocked != nil {
-		return nil
-	}
-
-	d.blockedMu.Lock()
-	defer d.blockedMu.Unlock()
-
-	// check again in case of race condition
-	if d.blocked != nil {
-		return nil
-	}
-
-	var err error
-	d.blocked, err = d.db.GetBlocked()
-
-	return err
+	query := `DELETE FROM object WHERE hash = ?`
+	_, err = d.conn.Exec(query, hash)
+	return errors.Err(err)
 }
 
 // Shutdown shuts down the store gracefully
 func (d *DBBackedStore) Shutdown() {
-	d.blobs.Shutdown()
+	d.ticker.Stop()
+	d.done <- true
+	d.objectsStore.Shutdown()
+}
+
+func (d *DBBackedStore) selfCleanup() {
+	alreadyRunning := false
+	for {
+		select {
+		case <-d.done:
+			return
+		case t := <-d.ticker.C:
+			if alreadyRunning {
+				log.Infoln("Skipping self cleanup as it's already running")
+			}
+			alreadyRunning = true
+			log.Infoln("Beginning self cleanup...")
+			//select objects to delete and delete them
+			log.Infof("Finished self cleanup. It took %s", time.Since(t).String())
+		}
+	}
+
 }
