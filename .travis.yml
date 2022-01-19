@@ -26,5 +26,5 @@ deploy:
   script: ./scripts/deploy.sh
   file: bin/gody-cdn
   on:
-    repo: odyseeteam/gody-cdn
+    repo: OdyseeTeam/gody-cdn
     tags: true
