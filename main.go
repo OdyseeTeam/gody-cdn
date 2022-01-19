@@ -36,7 +36,7 @@ func main() {
 	finalStore := store.NewCachingStore("nvme-db-store", s3Store, dbs)
 	defer finalStore.Shutdown()
 
-	httpServer := http.NewServer(finalStore, 200)
+	httpServer := http.NewServer(finalStore, 4000)
 	err = httpServer.Start(":" + strconv.Itoa(2222))
 	if err != nil {
 		logrus.Fatal(err)
