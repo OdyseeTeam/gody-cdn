@@ -1,6 +1,8 @@
 package store
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"time"
 
 	"github.com/lbryio/reflector.go/shared"
@@ -42,19 +44,23 @@ func (c *CachingStore) Has(hash string) (bool, error) {
 
 // Get tries to get the object from the cache first, falling back to the origin. If the object comes
 // from the origin, it is also stored in the cache.
-func (c *CachingStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (c *CachingStore) Get(originalName string) ([]byte, shared.BlobTrace, error) {
+
+	h := sha1.New()
+	h.Write([]byte(originalName))
+	hashedName := hex.EncodeToString(h.Sum(nil))
 	start := time.Now()
-	object, trace, err := c.cache.Get(hash)
+	object, trace, err := c.cache.Get(hashedName)
 	if err == nil || !errors.Is(err, ErrObjectNotFound) {
 		return object, trace.Stack(time.Since(start), c.Name()), err
 	}
 
-	object, trace, err = c.origin.Get(hash)
+	object, trace, err = c.origin.Get(originalName)
 	if err != nil {
 		return nil, trace.Stack(time.Since(start), c.Name()), err
 	}
 	// do not do this async unless you're prepared to deal with mayhem
-	err = c.cache.Put(hash, object)
+	err = c.cache.Put(hashedName, object)
 	if err != nil {
 		log.Errorf("error saving object to underlying cache: %s", errors.FullTrace(err))
 	}
