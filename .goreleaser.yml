@@ -3,6 +3,10 @@
 builds:
 - env:
   - CGO_ENABLED=0
+  - IMPORTPATH="github.com/OdyseeTeam/gody-cdn"
+  - VERSIONSHORT="$(git describe --tags --always --dirty)"
+  - VERSIONLONG="$(git describe --tags --always --dirty --long)"
+  - COMMITMSG="${{ github.event.head_commit.message }}"
   goos:
     - linux
   goarch:
