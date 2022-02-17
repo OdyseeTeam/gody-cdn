@@ -58,7 +58,7 @@ func (o *ObjectCacheParams) GetMaxSize() int {
 		logrus.Fatalf(errors.FullTrace(err))
 	}
 	if maxSize <= 0 {
-		logrus.Fatal("disk cache size for \"%s\" must be more than 0. Parsed: %dB", o.Path, maxSize)
+		logrus.Fatalf("disk cache size for \"%s\" must be more than 0. Parsed: %dB", o.Path, maxSize)
 	}
 	return int(maxSize)
 }
