@@ -3,16 +3,12 @@
 builds:
 - env:
   - CGO_ENABLED=0
-  - IMPORTPATH="github.com/OdyseeTeam/gody-cdn"
-  - VERSIONSHORT="$(git describe --tags --always --dirty)"
-  - VERSIONLONG="$(git describe --tags --always --dirty --long)"
-  - COMMITMSG="${{ github.event.head_commit.message }}"
   goos:
     - linux
   goarch:
     - amd64
-  ldflags:
-    - -X "{{ .Env.IMPORTPATH }}/meta.semVersion={{ .Tag }}" -X "{{ .Env.IMPORTPATH }}/meta.version={{ .Env.VERSIONSHORT }}" -X "{{ .Env.IMPORTPATH }}/meta.versionLong={{ .Env.VERSIONLONG }}" -X "{{ .Env.IMPORTPATH }}/meta.commitMsg={{ .Env.COMMITMSG }}"
+#  ldflags:
+ #   - -X "{{ .Env.IMPORTPATH }}/meta.semVersion={{ .Tag }}" -X "{{ .Env.IMPORTPATH }}/meta.version={{ .Env.VERSIONSHORT }}" -X "{{ .Env.IMPORTPATH }}/meta.versionLong={{ .Env.VERSIONLONG }}" -X "{{ .Env.IMPORTPATH }}/meta.commitMsg={{ .Env.COMMITMSG }}"
 archives:
   - id: zip
     name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
