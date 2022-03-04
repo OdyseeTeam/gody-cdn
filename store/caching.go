@@ -16,7 +16,14 @@ import (
 // are retrieved from the origin and cached. Puts are cached and also forwarded to the origin.
 type CachingStore struct {
 	origin, cache ObjectStore
+	baseFuncs     *BaseFuncs
 	component     string
+}
+type BaseFuncs struct {
+	getFunc func(hash string) ([]byte, shared.BlobTrace, error)
+	hasFunc func(hash string) (bool, error)
+	putFunc func(hash string, object []byte) error
+	delFunc func(hash string) error
 }
 
 // NewCachingStore makes a new caching disk store and returns a pointer to it.
@@ -24,6 +31,15 @@ func NewCachingStore(component string, origin, cache ObjectStore) *CachingStore 
 	return &CachingStore{
 		component: component,
 		origin:    WithSingleFlight(component, origin),
+		cache:     WithSingleFlight(component, cache),
+	}
+}
+
+// NewCachingStoreV2 makes a new caching disk store that fetches object using a given function
+func NewCachingStoreV2(component string, BaseFuncs BaseFuncs, cache ObjectStore) *CachingStore {
+	return &CachingStore{
+		component: component,
+		baseFuncs: &BaseFuncs,
 		cache:     WithSingleFlight(component, cache),
 	}
 }
@@ -38,6 +54,9 @@ func (c *CachingStore) Has(hash string) (bool, error) {
 	has, err := c.cache.Has(hash)
 	if has || err != nil {
 		return has, err
+	}
+	if c.baseFuncs != nil {
+		return c.baseFuncs.hasFunc(hash)
 	}
 	return c.origin.Has(hash)
 }
@@ -54,8 +73,11 @@ func (c *CachingStore) Get(originalName string) ([]byte, shared.BlobTrace, error
 	if err == nil || !errors.Is(err, ErrObjectNotFound) {
 		return object, trace.Stack(time.Since(start), c.Name()), err
 	}
-
-	object, trace, err = c.origin.Get(originalName)
+	if c.baseFuncs != nil {
+		object, trace, err = c.baseFuncs.getFunc(originalName)
+	} else {
+		object, trace, err = c.origin.Get(originalName)
+	}
 	if err != nil {
 		return nil, trace.Stack(time.Since(start), c.Name()), err
 	}
@@ -69,7 +91,12 @@ func (c *CachingStore) Get(originalName string) ([]byte, shared.BlobTrace, error
 
 // Put stores the object in the origin and the cache
 func (c *CachingStore) Put(hash string, object []byte) error {
-	err := c.origin.Put(hash, object)
+	var err error
+	if c.baseFuncs != nil {
+		err = c.baseFuncs.putFunc(hash, object)
+	} else {
+		err = c.origin.Put(hash, object)
+	}
 	if err != nil {
 		return err
 	}
@@ -78,7 +105,12 @@ func (c *CachingStore) Put(hash string, object []byte) error {
 
 // Delete deletes the object from the origin and the cache
 func (c *CachingStore) Delete(hash string) error {
-	err := c.origin.Delete(hash)
+	var err error
+	if c.baseFuncs != nil {
+		err = c.baseFuncs.delFunc(hash)
+	} else {
+		err = c.origin.Delete(hash)
+	}
 	if err != nil {
 		return err
 	}
@@ -87,6 +119,8 @@ func (c *CachingStore) Delete(hash string) error {
 
 // Shutdown shuts down the store gracefully
 func (c *CachingStore) Shutdown() {
-	c.origin.Shutdown()
+	if c.baseFuncs == nil {
+		c.origin.Shutdown()
+	}
 	c.cache.Shutdown()
 }
