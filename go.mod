@@ -1,4 +1,4 @@
-module gody-cdn
+module github.com/OdyseeTeam/gody-cdn
 
 go 1.17
 
