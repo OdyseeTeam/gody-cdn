@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"gody-cdn/configs"
-	"gody-cdn/server/http"
-	"gody-cdn/store"
+	"github.com/OdyseeTeam/gody-cdn/configs"
+	"github.com/OdyseeTeam/gody-cdn/server/http"
+	"github.com/OdyseeTeam/gody-cdn/store"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/extras/stop"

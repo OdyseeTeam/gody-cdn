@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"gody-cdn/store"
+	"github.com/OdyseeTeam/gody-cdn/store"
 
 	"github.com/lbryio/lbry.go/v2/extras/stop"
 

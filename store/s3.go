@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"gody-cdn/configs"
+	"github.com/OdyseeTeam/gody-cdn/configs"
 
 	"github.com/lbryio/reflector.go/shared"
 
