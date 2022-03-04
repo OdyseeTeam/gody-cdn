@@ -20,10 +20,10 @@ type CachingStore struct {
 	component     string
 }
 type BaseFuncs struct {
-	getFunc func(hash string) ([]byte, shared.BlobTrace, error)
-	hasFunc func(hash string) (bool, error)
-	putFunc func(hash string, object []byte) error
-	delFunc func(hash string) error
+	GetFunc func(hash string) ([]byte, shared.BlobTrace, error)
+	HasFunc func(hash string) (bool, error)
+	PutFunc func(hash string, object []byte) error
+	DelFunc func(hash string) error
 }
 
 // NewCachingStore makes a new caching disk store and returns a pointer to it.
@@ -56,7 +56,7 @@ func (c *CachingStore) Has(hash string) (bool, error) {
 		return has, err
 	}
 	if c.baseFuncs != nil {
-		return c.baseFuncs.hasFunc(hash)
+		return c.baseFuncs.HasFunc(hash)
 	}
 	return c.origin.Has(hash)
 }
@@ -74,7 +74,7 @@ func (c *CachingStore) Get(originalName string) ([]byte, shared.BlobTrace, error
 		return object, trace.Stack(time.Since(start), c.Name()), err
 	}
 	if c.baseFuncs != nil {
-		object, trace, err = c.baseFuncs.getFunc(originalName)
+		object, trace, err = c.baseFuncs.GetFunc(originalName)
 	} else {
 		object, trace, err = c.origin.Get(originalName)
 	}
@@ -93,7 +93,7 @@ func (c *CachingStore) Get(originalName string) ([]byte, shared.BlobTrace, error
 func (c *CachingStore) Put(hash string, object []byte) error {
 	var err error
 	if c.baseFuncs != nil {
-		err = c.baseFuncs.putFunc(hash, object)
+		err = c.baseFuncs.PutFunc(hash, object)
 	} else {
 		err = c.origin.Put(hash, object)
 	}
@@ -107,7 +107,7 @@ func (c *CachingStore) Put(hash string, object []byte) error {
 func (c *CachingStore) Delete(hash string) error {
 	var err error
 	if c.baseFuncs != nil {
-		err = c.baseFuncs.delFunc(hash)
+		err = c.baseFuncs.DelFunc(hash)
 	} else {
 		err = c.origin.Delete(hash)
 	}

@@ -33,7 +33,7 @@ func main() {
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := store.NewDBBackedStore(ds, localDsn)
 
-	go selfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache)
+	go SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache)
 
 	finalStore := store.NewCachingStore("nvme-db-store", s3Store, dbs)
 	defer finalStore.Shutdown()
@@ -52,7 +52,7 @@ func main() {
 	stopper.StopAndWait()
 }
 
-func selfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper *stop.Group, diskConfig configs.ObjectCacheParams) {
+func SelfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper *stop.Group, diskConfig configs.ObjectCacheParams) {
 	// this is so that it runs on startup without having to wait for 10 minutes
 	err := doClean(dbStore, outerStore, stopper, diskConfig)
 	if err != nil {
