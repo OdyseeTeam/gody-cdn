@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/lbryio/reflector.go/shared"
-
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	qt "github.com/lbryio/lbry.go/v2/extras/query"
+	"github.com/lbryio/reflector.go/shared"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -95,7 +94,7 @@ func (d *DBBackedStore) has(hash string) (bool, *time.Time, error) {
 }
 
 // Get gets the object
-func (d *DBBackedStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (d *DBBackedStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
 	has, lastAccess, err := d.has(hash)
 	if err != nil {
@@ -105,7 +104,7 @@ func (d *DBBackedStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
 		return nil, shared.NewBlobTrace(time.Since(start), d.Name()), ErrObjectNotFound
 	}
 
-	obj, stack, err := d.objectsStore.Get(hash)
+	obj, stack, err := d.objectsStore.Get(hash, nil)
 	if err != nil {
 		if errors.Is(err, ErrObjectNotFound) {
 			e2 := d.Delete(hash)

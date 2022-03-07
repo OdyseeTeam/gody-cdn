@@ -5,9 +5,8 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/lbryio/reflector.go/shared"
-
 	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/reflector.go/shared"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,7 +19,7 @@ type CachingStore struct {
 	component     string
 }
 type BaseFuncs struct {
-	GetFunc func(hash string) ([]byte, shared.BlobTrace, error)
+	GetFunc func(hash string, extra interface{}) ([]byte, shared.BlobTrace, error)
 	HasFunc func(hash string) (bool, error)
 	PutFunc func(hash string, object []byte) error
 	DelFunc func(hash string) error
@@ -63,20 +62,21 @@ func (c *CachingStore) Has(hash string) (bool, error) {
 
 // Get tries to get the object from the cache first, falling back to the origin. If the object comes
 // from the origin, it is also stored in the cache.
-func (c *CachingStore) Get(originalName string) ([]byte, shared.BlobTrace, error) {
+// the extra parameter is used in conjunction with the getter function passed in V2 so that extra data such as decryption keys can be passed down
+func (c *CachingStore) Get(originalName string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 
 	h := sha1.New()
 	h.Write([]byte(originalName))
 	hashedName := hex.EncodeToString(h.Sum(nil))
 	start := time.Now()
-	object, trace, err := c.cache.Get(hashedName)
+	object, trace, err := c.cache.Get(hashedName, extra)
 	if err == nil || !errors.Is(err, ErrObjectNotFound) {
 		return object, trace.Stack(time.Since(start), c.Name()), err
 	}
 	if c.baseFuncs != nil {
-		object, trace, err = c.baseFuncs.GetFunc(originalName)
+		object, trace, err = c.baseFuncs.GetFunc(originalName, extra)
 	} else {
-		object, trace, err = c.origin.Get(originalName)
+		object, trace, err = c.origin.Get(originalName, extra)
 	}
 	if err != nil {
 		return nil, trace.Stack(time.Since(start), c.Name()), err

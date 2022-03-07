@@ -42,7 +42,7 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	blob, trace, err := s.store.Get(objectName)
+	blob, trace, err := s.store.Get(objectName, nil)
 	if err != nil {
 		serialized, serializeErr := trace.Serialize()
 		if serializeErr != nil {

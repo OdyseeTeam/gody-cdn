@@ -57,7 +57,7 @@ func (d *DiskStore) Has(hash string) (bool, error) {
 }
 
 // Get returns the object or an error if the object doesn't exist.
-func (d *DiskStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (d *DiskStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
 	err := d.initOnce()
 	if err != nil {

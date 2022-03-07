@@ -1,9 +1,8 @@
 package store
 
 import (
-	"github.com/lbryio/reflector.go/shared"
-
 	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/reflector.go/shared"
 )
 
 // ObjectStore is an interface for handling object storage.
@@ -13,7 +12,7 @@ type ObjectStore interface {
 	// Has Does object exist in the store.
 	Has(hash string) (bool, error)
 	// Get the object from the store. Must return ErrObjectNotFound if object is not in store.
-	Get(hash string) ([]byte, shared.BlobTrace, error)
+	Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error)
 	// Put the object into the store.
 	Put(hash string, object []byte) error
 	// Delete the object from the store.

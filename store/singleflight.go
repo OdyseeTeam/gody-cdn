@@ -3,9 +3,8 @@ package store
 import (
 	"time"
 
-	"github.com/lbryio/reflector.go/shared"
-
 	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/reflector.go/shared"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -35,7 +34,7 @@ type getterResponse struct {
 
 // Get ensures that only one request per hash is sent to the origin at a time,
 // thereby protecting against https://en.wikipedia.org/wiki/Thundering_herd_problem
-func (s *singleFlightStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (s *singleFlightStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
 	gr, err, _ := s.sf.Do(hash, s.getter(hash))
 	if err != nil {
@@ -53,7 +52,7 @@ func (s *singleFlightStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
 func (s *singleFlightStore) getter(hash string) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		start := time.Now()
-		object, stack, err := s.ObjectStore.Get(hash)
+		object, stack, err := s.ObjectStore.Get(hash, nil)
 		if err != nil {
 			return getterResponse{
 				object: nil,

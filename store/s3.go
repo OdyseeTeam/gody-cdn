@@ -7,14 +7,13 @@ import (
 
 	"github.com/OdyseeTeam/gody-cdn/configs"
 
-	"github.com/lbryio/reflector.go/shared"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/reflector.go/shared"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -59,7 +58,7 @@ func (s *S3Store) Has(hash string) (bool, error) {
 }
 
 // Get returns the object slice if present or errors on S3.
-func (s *S3Store) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (s *S3Store) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
 	//Todo-Need to handle error for object doesn't exist for consistency.
 	err := s.initOnce()
