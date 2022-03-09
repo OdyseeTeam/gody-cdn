@@ -64,7 +64,6 @@ func (c *CachingStore) Has(hash string) (bool, error) {
 // from the origin, it is also stored in the cache.
 // the extra parameter is used in conjunction with the getter function passed in V2 so that extra data such as decryption keys can be passed down
 func (c *CachingStore) Get(originalName string, extra interface{}) ([]byte, shared.BlobTrace, error) {
-
 	h := sha1.New()
 	h.Write([]byte(originalName))
 	hashedName := hex.EncodeToString(h.Sum(nil))
