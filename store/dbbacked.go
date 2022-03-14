@@ -66,6 +66,25 @@ const nameDBBacked = "db-backed"
 // Name is the cache type name
 func (d *DBBackedStore) Name() string { return nameDBBacked }
 
+// UsedSpace returns how many bytes are currently indexed by the db store
+// is_stored is always 1 in the current implementation, so avoiding that filter by passing fast=true the query return faster without any extra indexes
+func (d *DBBackedStore) UsedSpace(fast bool) (int, error) {
+	if d.conn == nil {
+		return 0, errors.Err("not connected")
+	}
+	query := `select sum(length) AS total FROM object WHERE is_stored = 1`
+	if fast {
+		query = `select sum(length) AS total FROM object`
+	}
+	row := d.conn.QueryRow(query)
+	var total int
+	err := row.Scan(&total)
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+	return total, nil
+}
+
 // Has returns true if the object is in the store
 func (d *DBBackedStore) Has(hash string) (bool, error) {
 	stored, _, err := d.has(hash)

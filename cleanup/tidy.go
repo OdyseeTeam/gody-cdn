@@ -1,6 +1,8 @@
 package cleanup
 
 import (
+	"os"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -34,7 +36,7 @@ func SelfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, sto
 }
 
 func doClean(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper *stop.Group, diskConfig configs.ObjectCacheParams) error {
-	used, err := GetUsedSpace(diskConfig.Path)
+	used, err := GetUsedSpace(dbStore, diskConfig.Path)
 	if err != nil {
 		return err
 	}
@@ -80,7 +82,19 @@ func doClean(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper
 }
 
 // GetUsedSpace returns how many bytes are used in the partition hosting the path
-func GetUsedSpace(path string) (int, error) {
+// setting SPACE_USE_DB=true as env var will force the function to calculate stored size from db info
+func GetUsedSpace(dbStore *store.DBBackedStore, path string) (int, error) {
+	useDB := os.Getenv("SPACE_USE_DB")
+	queryDb := false
+	if useDB != "" {
+		b, err := strconv.ParseBool(useDB)
+		if err == nil {
+			queryDb = b
+		}
+	}
+	if queryDb {
+		return dbStore.UsedSpace(true)
+	}
 	var stat syscall.Statfs_t
 	err := syscall.Statfs(path, &stat)
 	if err != nil {
@@ -90,6 +104,5 @@ func GetUsedSpace(path string) (int, error) {
 	all := stat.Blocks * uint64(stat.Bsize)
 	free := stat.Bfree * uint64(stat.Bsize)
 	used := all - free
-
 	return int(used), nil
 }
