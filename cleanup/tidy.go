@@ -41,7 +41,8 @@ func doClean(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper
 		return err
 	}
 	if used >= diskConfig.GetMaxSize() {
-		objectsToDelete, err := dbStore.LeastRecentlyAccessedObjects(int(float64(used) / 100. * 5))
+		pruneAmount := used - diskConfig.GetMaxSize() + int(float64(used)/100.*5)
+		objectsToDelete, err := dbStore.LeastRecentlyAccessedObjects(pruneAmount)
 		if err != nil {
 			return err
 		}
