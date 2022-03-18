@@ -237,8 +237,13 @@ type dbObject struct {
 
 //leastRecentlyAccessedObjects retrieves objects in chunks at a time starting from lastOffset
 func (d *DBBackedStore) leastRecentlyAccessedObjects(lastOffset int) ([]dbObject, error) {
-	limit := 1000
+	limit := 50000
+	fast := true
+
 	query := "SELECT hash, length from object where is_stored = 1 order by last_accessed_at limit ? offset ?"
+	if fast {
+		query = "SELECT hash, length from object order by last_accessed_at limit ? offset ?"
+	}
 
 	rows, err := d.conn.Query(query, limit, lastOffset*limit)
 	if err != nil {
