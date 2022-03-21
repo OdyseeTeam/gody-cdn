@@ -27,10 +27,10 @@ type s3Instance struct {
 }
 
 // NewMultiS3Store returns an initialized S3 store pointer.
-func NewMultiS3Store(config []configs.S3Configs) (*MultiS3Store, error) {
+func NewMultiS3Store(configs []configs.S3Configs) (*MultiS3Store, error) {
 	var ms MultiS3Store
-	for _, s3Config := range config {
-		sess, err := session.NewSession(s3Config.GetS3AWSConfig())
+	for _, s3Config := range configs {
+		sess, err := session.NewSession(s3Config.GetS3AWSConfig()) //why the fuck does this overwrite the one in the previous iteration?
 		if err != nil {
 			return nil, errors.Err(err)
 		}
@@ -79,7 +79,7 @@ func (s *MultiS3Store) Get(hash string, extra interface{}) ([]byte, shared.BlobT
 		return nil, shared.NewBlobTrace(time.Since(start), s.Name()), errors.Err("%s requires an origin index to be specified in the extra params. use the MultiS3Extras struct.", nameMultiS3)
 	}
 
-	log.Debugf("Getting %s from S3", hash[:8])
+	log.Debugf("Getting %s from S3 at index %d", hash[:8], ex.S3Index)
 	defer func(t time.Time) {
 		log.Debugf("Getting %s from S3 took %s", hash[:8], time.Since(t).String())
 	}(start)

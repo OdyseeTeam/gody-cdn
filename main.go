@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalln(errors.FullTrace(err))
 	}
-	s3Store := store.NewS3Store(configs.Configuration.S3Origins[0])
+	s3Stores, err := store.NewMultiS3Store(configs.Configuration.S3Origins)
 	err = os.MkdirAll(configs.Configuration.DiskCache.Path, os.ModePerm)
 	if err != nil {
 		logrus.Fatal(errors.FullTrace(err))
@@ -35,7 +35,7 @@ func main() {
 
 	go cleanup.SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache)
 
-	finalStore := store.NewCachingStore("nvme-db-store", s3Store, dbs)
+	finalStore := store.NewCachingStore("nvme-db-store", s3Stores, dbs)
 	defer finalStore.Shutdown()
 
 	httpServer := http.NewServer(finalStore, 4000)
