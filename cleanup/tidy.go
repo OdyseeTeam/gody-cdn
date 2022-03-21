@@ -69,7 +69,7 @@ func doClean(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper
 						return
 					default:
 					}
-					err = outerStore.Delete(h)
+					err = outerStore.Delete(h, nil)
 					if err != nil {
 						logrus.Errorf("error pruning %s: %s", h, errors.FullTrace(err))
 						continue

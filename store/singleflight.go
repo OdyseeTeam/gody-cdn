@@ -36,7 +36,7 @@ type getterResponse struct {
 // thereby protecting against https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (s *singleFlightStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
-	gr, err, _ := s.sf.Do(hash, s.getter(hash))
+	gr, err, _ := s.sf.Do(hash, s.getter(hash, extra))
 	if err != nil {
 		return nil, shared.NewBlobTrace(time.Since(start), s.Name()), err
 	}
@@ -49,10 +49,10 @@ func (s *singleFlightStore) Get(hash string, extra interface{}) ([]byte, shared.
 
 // getter returns a function that gets an object from the origin
 // only one getter per hash will be executing at a time
-func (s *singleFlightStore) getter(hash string) func() (interface{}, error) {
+func (s *singleFlightStore) getter(hash string, extra interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		start := time.Now()
-		object, stack, err := s.ObjectStore.Get(hash, nil)
+		object, stack, err := s.ObjectStore.Get(hash, extra)
 		if err != nil {
 			return getterResponse{
 				object: nil,
@@ -69,8 +69,8 @@ func (s *singleFlightStore) getter(hash string) func() (interface{}, error) {
 
 // Put ensures that only one request per hash is sent to the origin at a time,
 // thereby protecting against https://en.wikipedia.org/wiki/Thundering_herd_problem
-func (s *singleFlightStore) Put(hash string, object []byte) error {
-	_, err, _ := s.sf.Do(hash, s.putter(hash, object))
+func (s *singleFlightStore) Put(hash string, object []byte, extra interface{}) error {
+	_, err, _ := s.sf.Do(hash, s.putter(hash, object, extra))
 	if err != nil {
 		return err
 	}
@@ -79,9 +79,9 @@ func (s *singleFlightStore) Put(hash string, object []byte) error {
 
 // putter returns a function that puts an object from the origin
 // only one putter per hash will be executing at a time
-func (s *singleFlightStore) putter(hash string, object []byte) func() (interface{}, error) {
+func (s *singleFlightStore) putter(hash string, object []byte, extra interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
-		err := s.ObjectStore.Put(hash, object)
+		err := s.ObjectStore.Put(hash, object, extra)
 		if err != nil {
 			return nil, err
 		}

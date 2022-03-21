@@ -18,12 +18,6 @@ type CachingStore struct {
 	baseFuncs     *BaseFuncs
 	component     string
 }
-type BaseFuncs struct {
-	GetFunc func(hash string, extra interface{}) ([]byte, shared.BlobTrace, error)
-	HasFunc func(hash string) (bool, error)
-	PutFunc func(hash string, object []byte) error
-	DelFunc func(hash string) error
-}
 
 // NewCachingStore makes a new caching disk store and returns a pointer to it.
 func NewCachingStore(component string, origin, cache ObjectStore) *CachingStore {
@@ -35,10 +29,10 @@ func NewCachingStore(component string, origin, cache ObjectStore) *CachingStore 
 }
 
 // NewCachingStoreV2 makes a new caching disk store that fetches object using a given function
-func NewCachingStoreV2(component string, BaseFuncs BaseFuncs, cache ObjectStore) *CachingStore {
+func NewCachingStoreV2(component string, baseFuncs BaseFuncs, cache ObjectStore) *CachingStore {
 	return &CachingStore{
 		component: component,
-		baseFuncs: &BaseFuncs,
+		baseFuncs: &baseFuncs,
 		cache:     WithSingleFlight(component, cache),
 	}
 }
@@ -49,15 +43,15 @@ const nameCaching = "caching"
 func (c *CachingStore) Name() string { return nameCaching }
 
 // Has checks the cache and then the origin for a hash. It returns true if either store has it.
-func (c *CachingStore) Has(hash string) (bool, error) {
-	has, err := c.cache.Has(hash)
+func (c *CachingStore) Has(hash string, extra interface{}) (bool, error) {
+	has, err := c.cache.Has(hash, extra)
 	if has || err != nil {
 		return has, err
 	}
 	if c.baseFuncs != nil {
-		return c.baseFuncs.HasFunc(hash)
+		return c.baseFuncs.HasFunc(hash, extra)
 	}
-	return c.origin.Has(hash)
+	return c.origin.Has(hash, extra)
 }
 
 // Get tries to get the object from the cache first, falling back to the origin. If the object comes
@@ -81,7 +75,7 @@ func (c *CachingStore) Get(originalName string, extra interface{}) ([]byte, shar
 		return nil, trace.Stack(time.Since(start), c.Name()), err
 	}
 	// do not do this async unless you're prepared to deal with mayhem
-	err = c.cache.Put(hashedName, object)
+	err = c.cache.Put(hashedName, object, extra)
 	if err != nil {
 		log.Errorf("error saving object to underlying cache: %s", errors.FullTrace(err))
 	}
@@ -89,31 +83,31 @@ func (c *CachingStore) Get(originalName string, extra interface{}) ([]byte, shar
 }
 
 // Put stores the object in the origin and the cache
-func (c *CachingStore) Put(hash string, object []byte) error {
+func (c *CachingStore) Put(hash string, object []byte, extra interface{}) error {
 	var err error
 	if c.baseFuncs != nil {
-		err = c.baseFuncs.PutFunc(hash, object)
+		err = c.baseFuncs.PutFunc(hash, object, extra)
 	} else {
-		err = c.origin.Put(hash, object)
+		err = c.origin.Put(hash, object, extra)
 	}
 	if err != nil {
 		return err
 	}
-	return c.cache.Put(hash, object)
+	return c.cache.Put(hash, object, extra)
 }
 
 // Delete deletes the object from the origin and the cache
-func (c *CachingStore) Delete(hash string) error {
+func (c *CachingStore) Delete(hash string, extra interface{}) error {
 	var err error
 	if c.baseFuncs != nil {
-		err = c.baseFuncs.DelFunc(hash)
+		err = c.baseFuncs.DelFunc(hash, extra)
 	} else {
-		err = c.origin.Delete(hash)
+		err = c.origin.Delete(hash, extra)
 	}
 	if err != nil {
 		return err
 	}
-	return c.cache.Delete(hash)
+	return c.cache.Delete(hash, extra)
 }
 
 // Shutdown shuts down the store gracefully

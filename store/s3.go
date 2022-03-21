@@ -37,7 +37,7 @@ const nameS3 = "s3"
 func (s *S3Store) Name() string { return nameS3 }
 
 // Has returns T/F or Error ( from S3 ) if the store contains the object.
-func (s *S3Store) Has(hash string) (bool, error) {
+func (s *S3Store) Has(hash string, extra interface{}) (bool, error) {
 	err := s.initOnce()
 	if err != nil {
 		return false, err
@@ -90,7 +90,7 @@ func (s *S3Store) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace,
 }
 
 // Put stores the object on S3 or errors if S3 connection errors.
-func (s *S3Store) Put(hash string, object []byte) error {
+func (s *S3Store) Put(hash string, object []byte, extra interface{}) error {
 	err := s.initOnce()
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (s *S3Store) Put(hash string, object []byte) error {
 	return err
 }
 
-func (s *S3Store) Delete(hash string) error {
+func (s *S3Store) Delete(hash string, extra interface{}) error {
 	err := s.initOnce()
 	if err != nil {
 		return err

@@ -40,7 +40,7 @@ const nameDisk = "disk"
 func (d *DiskStore) Name() string { return nameDisk }
 
 // Has returns whether the object exists or not. It will error with any IO disk error.
-func (d *DiskStore) Has(hash string) (bool, error) {
+func (d *DiskStore) Has(hash string, extra interface{}) (bool, error) {
 	err := d.initOnce()
 	if err != nil {
 		return false, err
@@ -75,7 +75,7 @@ func (d *DiskStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrac
 }
 
 // Put stores the object on disk
-func (d *DiskStore) Put(hash string, object []byte) error {
+func (d *DiskStore) Put(hash string, object []byte, extra interface{}) error {
 	err := d.initOnce()
 	if err != nil {
 		return err
@@ -109,13 +109,13 @@ func (d *DiskStore) Put(hash string, object []byte) error {
 }
 
 // Delete deletes the object from the store
-func (d *DiskStore) Delete(hash string) error {
+func (d *DiskStore) Delete(hash string, extra interface{}) error {
 	err := d.initOnce()
 	if err != nil {
 		return err
 	}
 
-	has, err := d.Has(hash)
+	has, err := d.Has(hash, extra)
 	if err != nil {
 		return err
 	}

@@ -86,7 +86,7 @@ func (d *DBBackedStore) UsedSpace(fast bool) (int, error) {
 }
 
 // Has returns true if the object is in the store
-func (d *DBBackedStore) Has(hash string) (bool, error) {
+func (d *DBBackedStore) Has(hash string, extra interface{}) (bool, error) {
 	stored, _, err := d.has(hash)
 	return stored, err
 }
@@ -123,10 +123,10 @@ func (d *DBBackedStore) Get(hash string, extra interface{}) ([]byte, shared.Blob
 		return nil, shared.NewBlobTrace(time.Since(start), d.Name()), ErrObjectNotFound
 	}
 
-	obj, stack, err := d.objectsStore.Get(hash, nil)
+	obj, stack, err := d.objectsStore.Get(hash, extra)
 	if err != nil {
 		if errors.Is(err, ErrObjectNotFound) {
-			e2 := d.Delete(hash)
+			e2 := d.Delete(hash, extra)
 			if e2 != nil {
 				log.Errorf("error while deleting object from db: %s", errors.FullTrace(err))
 			}
@@ -152,11 +152,11 @@ func (d *DBBackedStore) touch(hash string) error {
 }
 
 // Put stores the object in the S3 store and stores the object information in the DB.
-func (d *DBBackedStore) Put(hash string, object []byte) error {
+func (d *DBBackedStore) Put(hash string, object []byte, extra interface{}) error {
 	if d.conn == nil {
 		return errors.Err("not connected")
 	}
-	err := d.objectsStore.Put(hash, object)
+	err := d.objectsStore.Put(hash, object, extra)
 	if err != nil {
 		return err
 	}
@@ -166,11 +166,11 @@ func (d *DBBackedStore) Put(hash string, object []byte) error {
 	return errors.Err(err)
 }
 
-func (d *DBBackedStore) Delete(hash string) error {
+func (d *DBBackedStore) Delete(hash string, extra interface{}) error {
 	if d.conn == nil {
 		return errors.Err("not connected")
 	}
-	err := d.objectsStore.Delete(hash)
+	err := d.objectsStore.Delete(hash, extra)
 	if err != nil {
 		return err
 	}

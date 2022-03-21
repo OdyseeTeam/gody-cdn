@@ -76,7 +76,7 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 
 func (s *Server) hasObject(c *gin.Context) {
 	objectName := c.Query("object")
-	has, err := s.store.Has(objectName)
+	has, err := s.store.Has(objectName, nil)
 	if err != nil {
 		_ = c.Error(err)
 		c.String(http.StatusInternalServerError, err.Error())
