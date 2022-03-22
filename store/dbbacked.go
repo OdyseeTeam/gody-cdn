@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/lbryio/reflector.go/shared"
-
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	qt "github.com/lbryio/lbry.go/v2/extras/query"
+	"github.com/lbryio/reflector.go/shared"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -67,8 +66,27 @@ const nameDBBacked = "db-backed"
 // Name is the cache type name
 func (d *DBBackedStore) Name() string { return nameDBBacked }
 
+// UsedSpace returns how many bytes are currently indexed by the db store
+// is_stored is always 1 in the current implementation, so avoiding that filter by passing fast=true the query return faster without any extra indexes
+func (d *DBBackedStore) UsedSpace(fast bool) (int, error) {
+	if d.conn == nil {
+		return 0, errors.Err("not connected")
+	}
+	query := `select sum(length) AS total FROM object WHERE is_stored = 1`
+	if fast {
+		query = `select sum(length) AS total FROM object`
+	}
+	row := d.conn.QueryRow(query)
+	var total int
+	err := row.Scan(&total)
+	if err != nil {
+		return 0, errors.Err(err)
+	}
+	return total, nil
+}
+
 // Has returns true if the object is in the store
-func (d *DBBackedStore) Has(hash string) (bool, error) {
+func (d *DBBackedStore) Has(hash string, extra interface{}) (bool, error) {
 	stored, _, err := d.has(hash)
 	return stored, err
 }
@@ -95,7 +113,7 @@ func (d *DBBackedStore) has(hash string) (bool, *time.Time, error) {
 }
 
 // Get gets the object
-func (d *DBBackedStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (d *DBBackedStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
 	has, lastAccess, err := d.has(hash)
 	if err != nil {
@@ -105,10 +123,10 @@ func (d *DBBackedStore) Get(hash string) ([]byte, shared.BlobTrace, error) {
 		return nil, shared.NewBlobTrace(time.Since(start), d.Name()), ErrObjectNotFound
 	}
 
-	obj, stack, err := d.objectsStore.Get(hash)
+	obj, stack, err := d.objectsStore.Get(hash, extra)
 	if err != nil {
 		if errors.Is(err, ErrObjectNotFound) {
-			e2 := d.Delete(hash)
+			e2 := d.Delete(hash, extra)
 			if e2 != nil {
 				log.Errorf("error while deleting object from db: %s", errors.FullTrace(err))
 			}
@@ -134,11 +152,11 @@ func (d *DBBackedStore) touch(hash string) error {
 }
 
 // Put stores the object in the S3 store and stores the object information in the DB.
-func (d *DBBackedStore) Put(hash string, object []byte) error {
+func (d *DBBackedStore) Put(hash string, object []byte, extra interface{}) error {
 	if d.conn == nil {
 		return errors.Err("not connected")
 	}
-	err := d.objectsStore.Put(hash, object)
+	err := d.objectsStore.Put(hash, object, extra)
 	if err != nil {
 		return err
 	}
@@ -148,11 +166,11 @@ func (d *DBBackedStore) Put(hash string, object []byte) error {
 	return errors.Err(err)
 }
 
-func (d *DBBackedStore) Delete(hash string) error {
+func (d *DBBackedStore) Delete(hash string, extra interface{}) error {
 	if d.conn == nil {
 		return errors.Err("not connected")
 	}
-	err := d.objectsStore.Delete(hash)
+	err := d.objectsStore.Delete(hash, extra)
 	if err != nil {
 		return err
 	}
@@ -219,8 +237,13 @@ type dbObject struct {
 
 //leastRecentlyAccessedObjects retrieves objects in chunks at a time starting from lastOffset
 func (d *DBBackedStore) leastRecentlyAccessedObjects(lastOffset int) ([]dbObject, error) {
-	limit := 1000
+	limit := 50000
+	fast := true
+
 	query := "SELECT hash, length from object where is_stored = 1 order by last_accessed_at limit ? offset ?"
+	if fast {
+		query = "SELECT hash, length from object order by last_accessed_at limit ? offset ?"
+	}
 
 	rows, err := d.conn.Query(query, limit, lastOffset*limit)
 	if err != nil {

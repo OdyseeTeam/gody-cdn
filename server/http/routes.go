@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +23,11 @@ func (s *Server) getObject(c *gin.Context) {
 	waiter.Wait()
 }
 
+var allowedOrigins = map[string]store.MultiS3Extras{
+	"legacy": {S3Index: 0},
+	"wasabi": {S3Index: 1},
+}
+
 func (s *Server) HandleGetObject(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -29,7 +35,21 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 		}
 	}()
 	start := time.Now()
-	objectName := strings.ReplaceAll(c.Request.RequestURI, "/t-na/", "")
+	objectName := strings.ReplaceAll(c.Request.URL.Path, "/t-na/", "")
+	leadingSlashRegexp, err := regexp.Compile("^/")
+	objectName = leadingSlashRegexp.ReplaceAllString(objectName, "")
+
+	unsafeOriginBucket := c.Query("origin")
+	extras := allowedOrigins["legacy"]
+	if unsafeOriginBucket != "" {
+		e, ok := allowedOrigins[unsafeOriginBucket]
+		if ok {
+			extras = e
+		} else {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+	}
 	log.Debugf("object name: %s", objectName)
 	if s.missesCache.Has(objectName) {
 		serialized, err := shared.NewBlobTrace(time.Since(start), "http").Serialize()
@@ -42,7 +62,7 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	blob, trace, err := s.store.Get(objectName)
+	blob, trace, err := s.store.Get(objectName, extras)
 	if err != nil {
 		serialized, serializeErr := trace.Serialize()
 		if serializeErr != nil {
@@ -76,7 +96,7 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 
 func (s *Server) hasObject(c *gin.Context) {
 	objectName := c.Query("object")
-	has, err := s.store.Has(objectName)
+	has, err := s.store.Has(objectName, nil)
 	if err != nil {
 		_ = c.Error(err)
 		c.String(http.StatusInternalServerError, err.Error())

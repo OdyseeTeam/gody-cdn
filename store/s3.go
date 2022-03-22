@@ -7,14 +7,13 @@ import (
 
 	"github.com/OdyseeTeam/gody-cdn/configs"
 
-	"github.com/lbryio/reflector.go/shared"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/reflector.go/shared"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,7 +37,7 @@ const nameS3 = "s3"
 func (s *S3Store) Name() string { return nameS3 }
 
 // Has returns T/F or Error ( from S3 ) if the store contains the object.
-func (s *S3Store) Has(hash string) (bool, error) {
+func (s *S3Store) Has(hash string, extra interface{}) (bool, error) {
 	err := s.initOnce()
 	if err != nil {
 		return false, err
@@ -59,17 +58,20 @@ func (s *S3Store) Has(hash string) (bool, error) {
 }
 
 // Get returns the object slice if present or errors on S3.
-func (s *S3Store) Get(hash string) ([]byte, shared.BlobTrace, error) {
+func (s *S3Store) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
 	//Todo-Need to handle error for object doesn't exist for consistency.
 	err := s.initOnce()
 	if err != nil {
 		return nil, shared.NewBlobTrace(time.Since(start), s.Name()), err
 	}
-
-	log.Debugf("Getting %s from S3", hash[:8])
+	truncatedHash := hash
+	if len(hash) > 8 {
+		truncatedHash = hash[:8]
+	}
+	log.Debugf("Getting %s from S3", truncatedHash)
 	defer func(t time.Time) {
-		log.Debugf("Getting %s from S3 took %s", hash[:8], time.Since(t).String())
+		log.Debugf("Getting %s from S3 took %s", truncatedHash, time.Since(t).String())
 	}(start)
 
 	buf := &aws.WriteAtBuffer{}
@@ -91,7 +93,7 @@ func (s *S3Store) Get(hash string) ([]byte, shared.BlobTrace, error) {
 }
 
 // Put stores the object on S3 or errors if S3 connection errors.
-func (s *S3Store) Put(hash string, object []byte) error {
+func (s *S3Store) Put(hash string, object []byte, extra interface{}) error {
 	err := s.initOnce()
 	if err != nil {
 		return err
@@ -111,7 +113,7 @@ func (s *S3Store) Put(hash string, object []byte) error {
 	return err
 }
 
-func (s *S3Store) Delete(hash string) error {
+func (s *S3Store) Delete(hash string, extra interface{}) error {
 	err := s.initOnce()
 	if err != nil {
 		return err
