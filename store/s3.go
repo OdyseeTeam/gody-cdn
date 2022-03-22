@@ -65,10 +65,13 @@ func (s *S3Store) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace,
 	if err != nil {
 		return nil, shared.NewBlobTrace(time.Since(start), s.Name()), err
 	}
-
-	log.Debugf("Getting %s from S3", hash[:8])
+	truncatedHash := hash
+	if len(hash) > 8 {
+		truncatedHash = hash[:8]
+	}
+	log.Debugf("Getting %s from S3", truncatedHash)
 	defer func(t time.Time) {
-		log.Debugf("Getting %s from S3 took %s", hash[:8], time.Since(t).String())
+		log.Debugf("Getting %s from S3 took %s", truncatedHash, time.Since(t).String())
 	}(start)
 
 	buf := &aws.WriteAtBuffer{}

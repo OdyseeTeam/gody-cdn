@@ -29,16 +29,18 @@ type s3Instance struct {
 // NewMultiS3Store returns an initialized S3 store pointer.
 func NewMultiS3Store(configs []configs.S3Configs) (*MultiS3Store, error) {
 	var ms MultiS3Store
-	for _, s3Config := range configs {
-		sess, err := session.NewSession(s3Config.GetS3AWSConfig()) //why the fuck does this overwrite the one in the previous iteration?
+	// we need to access the configs via index because session.NewSession does NOT copy the value of configs, rather stores the pointer only.
+	for i := range configs {
+		sess, err := session.NewSession(configs[i].GetS3AWSConfig())
 		if err != nil {
 			return nil, errors.Err(err)
 		}
 		ms.instances = append(ms.instances, s3Instance{
-			config:  s3Config,
+			config:  configs[i],
 			session: *sess,
 		})
 	}
+
 	return &ms, nil
 }
 
@@ -78,10 +80,13 @@ func (s *MultiS3Store) Get(hash string, extra interface{}) ([]byte, shared.BlobT
 	if ex == nil {
 		return nil, shared.NewBlobTrace(time.Since(start), s.Name()), errors.Err("%s requires an origin index to be specified in the extra params. use the MultiS3Extras struct.", nameMultiS3)
 	}
-
-	log.Debugf("Getting %s from S3 at index %d", hash[:8], ex.S3Index)
+	truncatedHash := hash
+	if len(hash) > 8 {
+		truncatedHash = hash[:8]
+	}
+	log.Debugf("Getting %s from S3 at index %d", truncatedHash, ex.S3Index)
 	defer func(t time.Time) {
-		log.Debugf("Getting %s from S3 took %s", hash[:8], time.Since(t).String())
+		log.Debugf("Getting %s from S3 took %s", truncatedHash, time.Since(t).String())
 	}(start)
 
 	buf := &aws.WriteAtBuffer{}
