@@ -47,8 +47,8 @@ func (s *Server) Start(address string) error {
 	router.Use(gin.Logger())
 	// Install nice.Recovery, passing the handler to call after recovery
 	router.Use(nice.Recovery(s.recoveryHandler))
-	router.GET("/t-na/*whatever", s.getObject)
-	router.HEAD("/t-na/*whatever", s.hasObject)
+	router.GET("/*whatever", s.getObject)
+	router.HEAD("/*whatever", s.hasObject)
 	srv := &http.Server{
 		Addr:    address,
 		Handler: router,

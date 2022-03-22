@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -34,13 +35,19 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 		}
 	}()
 	start := time.Now()
-	objectName := strings.ReplaceAll(c.Request.RequestURI, "/t-na/", "")
+	objectName := strings.ReplaceAll(c.Request.URL.Path, "/t-na/", "")
+	leadingSlashRegexp, err := regexp.Compile("^/")
+	objectName = leadingSlashRegexp.ReplaceAllString(objectName, "")
+
 	unsafeOriginBucket := c.Query("origin")
 	extras := allowedOrigins["legacy"]
 	if unsafeOriginBucket != "" {
 		e, ok := allowedOrigins[unsafeOriginBucket]
 		if ok {
 			extras = e
+		} else {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
 		}
 	}
 	log.Debugf("object name: %s", objectName)
