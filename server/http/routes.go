@@ -37,6 +37,11 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 	start := time.Now()
 	objectName := strings.ReplaceAll(c.Request.URL.Path, "/t-na/", "")
 	leadingSlashRegexp, err := regexp.Compile("^/")
+	if err != nil {
+		_ = c.Error(errors.Err(err))
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 	objectName = leadingSlashRegexp.ReplaceAllString(objectName, "")
 
 	unsafeOriginBucket := c.Query("origin")

@@ -92,5 +92,4 @@ func (s *singleFlightStore) putter(hash string, object []byte, extra interface{}
 // Shutdown shuts down the store gracefully
 func (s *singleFlightStore) Shutdown() {
 	s.ObjectStore.Shutdown()
-	return
 }

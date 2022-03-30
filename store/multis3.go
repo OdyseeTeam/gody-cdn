@@ -144,7 +144,6 @@ func (s *MultiS3Store) Delete(hash string, extra interface{}) error {
 
 // Shutdown shuts down the store gracefully
 func (s *MultiS3Store) Shutdown() {
-	return
 }
 
 func (s *MultiS3Store) getExtras(extra interface{}) *MultiS3Extras {

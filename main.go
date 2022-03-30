@@ -24,6 +24,9 @@ func main() {
 		logrus.Fatalln(errors.FullTrace(err))
 	}
 	s3Stores, err := store.NewMultiS3Store(configs.Configuration.S3Origins)
+	if err != nil {
+		logrus.Fatalln(errors.FullTrace(err))
+	}
 	err = os.MkdirAll(configs.Configuration.DiskCache.Path, os.ModePerm)
 	if err != nil {
 		logrus.Fatal(errors.FullTrace(err))
