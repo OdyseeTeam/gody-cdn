@@ -27,11 +27,13 @@ type DiskStore struct {
 }
 
 // NewDiskStore returns an initialized file disk store pointer.
-func NewDiskStore(dir string, prefixLength int) *DiskStore {
-	return &DiskStore{
+func NewDiskStore(dir string, prefixLength int) (*DiskStore, error) {
+	ds := &DiskStore{
 		objectDir:    dir,
 		prefixLength: prefixLength,
 	}
+	err := ds.initOnce()
+	return ds, err
 }
 
 const nameDisk = "disk"
@@ -41,12 +43,7 @@ func (d *DiskStore) Name() string { return nameDisk }
 
 // Has returns whether the object exists or not. It will error with any IO disk error.
 func (d *DiskStore) Has(hash string, extra interface{}) (bool, error) {
-	err := d.initOnce()
-	if err != nil {
-		return false, err
-	}
-
-	_, err = os.Stat(d.path(hash))
+	_, err := os.Stat(d.path(hash))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -59,10 +56,6 @@ func (d *DiskStore) Has(hash string, extra interface{}) (bool, error) {
 // Get returns the object or an error if the object doesn't exist.
 func (d *DiskStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 	start := time.Now()
-	err := d.initOnce()
-	if err != nil {
-		return nil, shared.NewBlobTrace(time.Since(start), d.Name()), err
-	}
 
 	object, err := ioutil.ReadFile(d.path(hash))
 	if err != nil {
@@ -76,12 +69,7 @@ func (d *DiskStore) Get(hash string, extra interface{}) ([]byte, shared.BlobTrac
 
 // Put stores the object on disk
 func (d *DiskStore) Put(hash string, object []byte, extra interface{}) error {
-	err := d.initOnce()
-	if err != nil {
-		return err
-	}
-
-	err = d.ensureDirExists(d.dir(hash))
+	err := d.ensureDirExists(d.dir(hash))
 	if err != nil {
 		return err
 	}
@@ -110,30 +98,15 @@ func (d *DiskStore) Put(hash string, object []byte, extra interface{}) error {
 
 // Delete deletes the object from the store
 func (d *DiskStore) Delete(hash string, extra interface{}) error {
-	err := d.initOnce()
-	if err != nil {
-		return err
-	}
-
-	has, err := d.Has(hash, extra)
-	if err != nil {
-		return err
-	}
-	if !has {
+	err := os.Remove(d.path(hash))
+	if os.IsNotExist(err) {
 		return nil
 	}
-
-	err = os.Remove(d.path(hash))
 	return errors.Err(err)
 }
 
 // list returns the hashes of objects that already exist in the objectDir
 func (d *DiskStore) list() ([]string, error) {
-	err := d.initOnce()
-	if err != nil {
-		return nil, err
-	}
-
 	return speedwalk.AllFiles(d.objectDir, true)
 }
 

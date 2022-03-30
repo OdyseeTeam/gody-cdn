@@ -15,12 +15,11 @@ import (
 )
 
 func SelfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper *stop.Group, diskConfig configs.ObjectCacheParams) {
-	// this is so that it runs on startup without having to wait for 10 minutes
 	err := doClean(dbStore, outerStore, stopper, diskConfig)
 	if err != nil {
 		logrus.Error(errors.FullTrace(err))
 	}
-	const cleanupInterval = 10 * time.Minute
+	const cleanupInterval = 5 * time.Minute
 	for {
 		select {
 		case <-stopper.Ch():

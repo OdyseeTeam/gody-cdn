@@ -28,7 +28,10 @@ func main() {
 	if err != nil {
 		logrus.Fatal(errors.FullTrace(err))
 	}
-	ds := store.NewDiskStore(configs.Configuration.DiskCache.Path, 2)
+	ds, err := store.NewDiskStore(configs.Configuration.DiskCache.Path, 2)
+	if err != nil {
+		logrus.Fatal(errors.FullTrace(err))
+	}
 	localDB := configs.Configuration.LocalDB
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := store.NewDBBackedStore(ds, localDsn)
