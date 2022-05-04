@@ -19,7 +19,7 @@ func SelfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, sto
 	if err != nil {
 		logrus.Error(errors.FullTrace(err))
 	}
-	const cleanupInterval = 5 * time.Minute
+	const cleanupInterval = 2 * time.Minute
 	for {
 		select {
 		case <-stopper.Ch():
@@ -40,8 +40,10 @@ func doClean(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper
 		return err
 	}
 	if used >= diskConfig.GetMaxSize() {
+		startTime := time.Now()
 		pruneAmount := used - diskConfig.GetMaxSize() + int(float64(used)/100.*5)
 		objectsToDelete, err := dbStore.LeastRecentlyAccessedObjects(pruneAmount)
+		logrus.Infof("[godycdn] cleanup triggered. Used: %dG, maxsize: %dG, pruneamount: %dG", used/1024/1024/1024, diskConfig.GetMaxSize()/1024/1024/1024, pruneAmount/1024/1024/1024)
 		if err != nil {
 			return err
 		}
@@ -77,6 +79,7 @@ func doClean(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper
 			}()
 		}
 		wg.Wait()
+		logrus.Infof("[godycdn] cleanup finished - it took %s", time.Since(startTime))
 	}
 	return nil
 }
