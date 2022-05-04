@@ -2,13 +2,13 @@ package cleanup
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/OdyseeTeam/gody-cdn/configs"
 	"github.com/OdyseeTeam/gody-cdn/store"
-
+	
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/extras/stop"
 	"github.com/sirupsen/logrus"
@@ -98,14 +98,16 @@ func GetUsedSpace(dbStore *store.DBBackedStore, path string) (int, error) {
 	if queryDb {
 		return dbStore.UsedSpace(true)
 	}
-	var stat syscall.Statfs_t
-	err := syscall.Statfs(path, &stat)
-	if err != nil {
-		return 0, errors.Err(err)
-	}
-	// Available blocks * size per block = available space in bytes
-	all := stat.Blocks * uint64(stat.Bsize)
-	free := stat.Bfree * uint64(stat.Bsize)
-	used := all - free
-	return int(used), nil
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+
+	return int(size), errors.Err(err)
 }
