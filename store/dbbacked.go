@@ -32,7 +32,6 @@ CREATE TABLE `object`
 type DBBackedStore struct {
 	objectsStore ObjectStore
 	conn         *sql.DB
-	ticker       *time.Ticker
 	done         chan bool
 }
 
@@ -42,9 +41,7 @@ func NewDBBackedStore(objectStore ObjectStore, dsn string) *DBBackedStore {
 	if err != nil {
 		log.Fatalln(errors.FullTrace(err))
 	}
-	dbbs := DBBackedStore{objectsStore: objectStore, conn: conn, ticker: time.NewTicker(5 * time.Minute), done: make(chan bool)}
-	go dbbs.selfCleanup()
-	return &dbbs
+	return &DBBackedStore{objectsStore: objectStore, conn: conn, done: make(chan bool)}
 }
 
 // Connect will create a connection to the database
@@ -181,27 +178,8 @@ func (d *DBBackedStore) Delete(hash string, extra interface{}) error {
 
 // Shutdown shuts down the store gracefully
 func (d *DBBackedStore) Shutdown() {
-	d.ticker.Stop()
 	d.done <- true
 	d.objectsStore.Shutdown()
-}
-
-func (d *DBBackedStore) selfCleanup() {
-	alreadyRunning := false
-	for {
-		select {
-		case <-d.done:
-			return
-		case t := <-d.ticker.C:
-			if alreadyRunning {
-				log.Infoln("Skipping self cleanup as it's already running")
-			}
-			alreadyRunning = true
-			log.Infoln("Beginning self cleanup...")
-			//select objects to delete and delete them
-			log.Infof("Finished self cleanup. It took %s", time.Since(t).String())
-		}
-	}
 }
 
 // LeastRecentlyAccessedObjects retrieves as many objects from the database as needed to match totalSize in occupied bytes
