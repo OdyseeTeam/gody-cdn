@@ -17,5 +17,6 @@
       "bucket": "transcoded.odycdn.com",
       "endpoint": "s3.amazonaws.com"
     }
-  ]
+  ],
+  "cleanup_interval_seconds": 60
 }

@@ -1,6 +1,8 @@
 package configs
 
 import (
+	"time"
+
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -30,10 +32,11 @@ type ObjectCacheParams struct {
 }
 
 type Configs struct {
-	SlackToken string            `json:"slack_token"`
-	S3Origins  []S3Configs       `json:"s3_origins"`
-	LocalDB    DbConfig          `json:"local_db"`
-	DiskCache  ObjectCacheParams `json:"disk_cache"`
+	SlackToken             string            `json:"slack_token"`
+	S3Origins              []S3Configs       `json:"s3_origins"`
+	LocalDB                DbConfig          `json:"local_db"`
+	DiskCache              ObjectCacheParams `json:"disk_cache"`
+	CleanupIntervalSeconds int               `json:"cleanup_interval_seconds"`
 }
 
 var Configuration *Configs
@@ -70,4 +73,8 @@ func (s *S3Configs) GetS3AWSConfig() *aws.Config {
 		Endpoint:         &s.Endpoint,
 		S3ForcePathStyle: aws.Bool(true),
 	}
+}
+
+func (c *Configs) GetCleanupInterval() time.Duration {
+	return time.Duration(c.CleanupIntervalSeconds) * time.Second
 }

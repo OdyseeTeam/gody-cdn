@@ -8,24 +8,23 @@ import (
 
 	"github.com/OdyseeTeam/gody-cdn/configs"
 	"github.com/OdyseeTeam/gody-cdn/store"
-	
+
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/extras/stop"
 	"github.com/sirupsen/logrus"
 )
 
-func SelfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper *stop.Group, diskConfig configs.ObjectCacheParams) {
+func SelfCleanup(dbStore *store.DBBackedStore, outerStore store.ObjectStore, stopper *stop.Group, diskConfig configs.ObjectCacheParams, interval time.Duration) {
 	err := doClean(dbStore, outerStore, stopper, diskConfig)
 	if err != nil {
 		logrus.Error(errors.FullTrace(err))
 	}
-	const cleanupInterval = 2 * time.Minute
 	for {
 		select {
 		case <-stopper.Ch():
 			logrus.Infoln("stopping self cleanup")
 			return
-		case <-time.After(cleanupInterval):
+		case <-time.After(interval):
 			err := doClean(dbStore, outerStore, stopper, diskConfig)
 			if err != nil {
 				logrus.Error(errors.FullTrace(err))

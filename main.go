@@ -39,7 +39,7 @@ func main() {
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := store.NewDBBackedStore(ds, localDsn)
 
-	go cleanup.SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache)
+	go cleanup.SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache, configs.Configuration.GetCleanupInterval())
 
 	finalStore := store.NewCachingStore("nvme-db-store", s3Stores, dbs)
 	defer finalStore.Shutdown()
