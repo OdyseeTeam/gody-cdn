@@ -24,7 +24,7 @@ func (s *Server) getObject(c *gin.Context) {
 }
 
 var allowedOrigins = map[string]store.MultiS3Extras{
-	"legacy": {S3Index: 0},
+	"odys3":  {S3Index: 0},
 	"wasabi": {S3Index: 1},
 }
 
@@ -45,7 +45,7 @@ func (s *Server) HandleGetObject(c *gin.Context) {
 	objectName = leadingSlashRegexp.ReplaceAllString(objectName, "")
 
 	unsafeOriginBucket := c.Query("origin")
-	extras := allowedOrigins["legacy"]
+	extras := allowedOrigins["odys3"]
 	if unsafeOriginBucket != "" {
 		e, ok := allowedOrigins[unsafeOriginBucket]
 		if ok {
